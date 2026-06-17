@@ -1284,63 +1284,60 @@ function playIndex(i) {
         }
         vimeoContainer.style.display = 'block';
 
-        // Create Vimeo Player with responsive sizing
-        try {
-            const initVimeo = () => {
-            vimeoPlayer = new Vimeo.Player(vimeoContainer, {
-                id: item.id,
-                autoplay: true,
-                width: vimeoContainer.offsetWidth || 800,
-                height: vimeoContainer.offsetHeight || 450
-            });
-            lastKnownTime = 0;
-            vimeoPlayer.on('loaded', () => {
-                console.log('Vimeo Player Loaded');
-                const ifr = vimeoContainer.querySelector('iframe');
-                if (ifr) ifr.setAttribute('tabindex', '-1');
-                setTimeout(() => {
-                    window.focus();
-                    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-                        document.body.focus();
+        // Create Vimeo Player with responsive sizing (lazy load API if needed)
+        const initVimeo = () => {
+            try {
+                vimeoPlayer = new Vimeo.Player(vimeoContainer, {
+                    id: item.id,
+                    autoplay: true,
+                    width: vimeoContainer.offsetWidth || 800,
+                    height: vimeoContainer.offsetHeight || 450
+                });
+                lastKnownTime = 0;
+                vimeoPlayer.on('loaded', () => {
+                    console.log('Vimeo Player Loaded');
+                    const ifr = vimeoContainer.querySelector('iframe');
+                    if (ifr) ifr.setAttribute('tabindex', '-1');
+                    setTimeout(() => {
+                        window.focus();
+                        if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+                            document.body.focus();
+                        }
+                    }, 100);
+                    const vol = parseInt(el.volumeSlider.value) || 50;
+                    vimeoPlayer.setVolume(vol / 100).catch(() => { });
+                    vimeoPlayer.play().catch(e => { console.warn('Vimeo autoplay might be blocked:', e); });
+                });
+                vimeoPlayer.on('ended', () => { skipNext(); });
+                vimeoPlayer.on('timeupdate', (data) => {
+                    const cur = data.seconds;
+                    const dur = data.duration;
+                    if (isNaN(cur)) return;
+                    el.currentTime.innerText = formatTime(cur);
+                    if (dur > 0 && !isNaN(dur)) el.duration.innerText = formatTime(dur);
+                    const diff = cur - lastKnownTime;
+                    if (diff > 0 && diff < 5) { cumulativeSeconds += diff; }
+                    lastKnownTime = cur;
+                    el.cumulativeTime.innerText = formatCumulative(cumulativeSeconds);
+                    if (dur > 0 && !isNaN(dur)) {
+                        const pct = (cur / dur) * 100;
+                        el.progressBar.style.width = pct + '%';
+                        const mini = document.getElementById(`mini-progress-${currentIndex}`);
+                        if (mini) mini.style.width = pct + '%';
+                        if (currentIndex >= 0 && queue[currentIndex]) { queue[currentIndex].duration = dur; }
                     }
-                }, 100);
+                });
                 const vol = parseInt(el.volumeSlider.value) || 50;
-                vimeoPlayer.setVolume(vol / 100).catch(() => { });
-                vimeoPlayer.play().catch(e => { console.warn('Vimeo autoplay might be blocked:', e); });
-            });
-            vimeoPlayer.on('ended', () => { skipNext(); });
-            vimeoPlayer.on('timeupdate', (data) => {
-                const cur = data.seconds;
-                const dur = data.duration;
-                if (isNaN(cur)) return;
-                el.currentTime.innerText = formatTime(cur);
-                if (dur > 0 && !isNaN(dur)) el.duration.innerText = formatTime(dur);
-                const diff = cur - lastKnownTime;
-                if (diff > 0 && diff < 5) { cumulativeSeconds += diff; }
-                lastKnownTime = cur;
-                el.cumulativeTime.innerText = formatCumulative(cumulativeSeconds);
-                if (dur > 0 && !isNaN(dur)) {
-                    const pct = (cur / dur) * 100;
-                    el.progressBar.style.width = pct + '%';
-                    const mini = document.getElementById(`mini-progress-${currentIndex}`);
-                    if (mini) mini.style.width = pct + '%';
-                    if (currentIndex >= 0 && queue[currentIndex]) { queue[currentIndex].duration = dur; }
-                }
-            });
-            const vol = parseInt(el.volumeSlider.value) || 50;
-            vimeoPlayer.setVolume(vol / 100);
-            vimeoPlayer.setLoop(isLoop).catch(() => { });
+                vimeoPlayer.setVolume(vol / 100);
+                vimeoPlayer.setLoop(isLoop).catch(() => { });
+            } catch (e) {
+                console.error("Vimeo Player Init Failed", e);
+            }
         };
         if (typeof Vimeo === 'undefined') {
             loadScript('https://player.vimeo.com/api/player.js').then(initVimeo).catch(e => console.error("Vimeo JS load failed", e));
         } else {
             initVimeo();
-        }
-
-            // Vimeo setup moved inside initVimeo callback to support lazy loading
-
-        } catch (e) {
-            console.error("Vimeo Player Init Failed", e);
         }
 
         el.nowId.value = `vimeo.com/${item.id}`;
@@ -1354,63 +1351,57 @@ function playIndex(i) {
         // Add ID="sc-iframe" and tabindex="-1"
         scContainer.innerHTML = `<iframe id="sc-iframe" tabindex="-1" width="100%" height="100%" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(item.id)}&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>`;
 
-        // Init SC Widget
-        try {
-            const iframeElement = document.getElementById('sc-iframe');
-            scWidget = SC.Widget(iframeElement);
-            scWidget.bind(SC.Widget.Events.READY, () => {
-                console.log('SC Widget Ready');
-                // Return focus to page so shortcuts work
-                setTimeout(() => {
-                    window.focus();
-                    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-                        document.body.focus();
-                    }
-                }, 100);
-
-                scWidget.play();
-                // Set volume
-                const vol = parseInt(el.volumeSlider.value);
-                scWidget.setVolume(vol);
-            });
-            scWidget.bind(SC.Widget.Events.FINISH, () => {
-                skipNext();
-            });
-            // Progress Update for SC
-            scWidget.bind(SC.Widget.Events.PLAY_PROGRESS, (data) => {
-                // data.currentPosition (ms)
-                const cur = data.currentPosition / 1000;
-                scWidget.getDuration(durMs => {
-                    const dur = durMs / 1000;
-
-                    // Update UI
-                    el.currentTime.innerText = formatTime(cur);
-                    if (dur > 0) el.duration.innerText = formatTime(dur);
-
-                    // Cumulative Time Update for SC
-                    const diff = cur - lastKnownTime;
-                    if (diff > 0 && diff < 2) {
-                        cumulativeSeconds += diff;
-                    }
-                    lastKnownTime = cur;
-                    el.cumulativeTime.innerText = formatCumulative(cumulativeSeconds);
-
-                    if (dur > 0) {
-                        const pct = (cur / dur) * 100;
-                        el.progressBar.style.width = pct + '%';
-                        const mini = document.getElementById(`mini-progress-${currentIndex}`);
-                        if (mini) mini.style.width = pct + '%';
-
-                        // Save state
-                        if (currentIndex >= 0 && queue[currentIndex]) {
-                            // queue[currentIndex].lastTime = cur; // Disabled: Always start from beginning
-                            queue[currentIndex].duration = dur;
+        // Init SC Widget (lazy load API if needed)
+        const initSCWidget = () => {
+            try {
+                const iframeElement = document.getElementById('sc-iframe');
+                scWidget = SC.Widget(iframeElement);
+                scWidget.bind(SC.Widget.Events.READY, () => {
+                    console.log('SC Widget Ready');
+                    setTimeout(() => {
+                        window.focus();
+                        if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+                            document.body.focus();
                         }
-                    }
+                    }, 100);
+                    scWidget.play();
+                    const vol = parseInt(el.volumeSlider.value);
+                    scWidget.setVolume(vol);
                 });
-            });
-        } catch (e) {
-            console.error("SC Widget Init Failed", e);
+                scWidget.bind(SC.Widget.Events.FINISH, () => {
+                    skipNext();
+                });
+                scWidget.bind(SC.Widget.Events.PLAY_PROGRESS, (data) => {
+                    const cur = data.currentPosition / 1000;
+                    scWidget.getDuration(durMs => {
+                        const dur = durMs / 1000;
+                        el.currentTime.innerText = formatTime(cur);
+                        if (dur > 0) el.duration.innerText = formatTime(dur);
+                        const diff = cur - lastKnownTime;
+                        if (diff > 0 && diff < 2) {
+                            cumulativeSeconds += diff;
+                        }
+                        lastKnownTime = cur;
+                        el.cumulativeTime.innerText = formatCumulative(cumulativeSeconds);
+                        if (dur > 0) {
+                            const pct = (cur / dur) * 100;
+                            el.progressBar.style.width = pct + '%';
+                            const mini = document.getElementById(`mini-progress-${currentIndex}`);
+                            if (mini) mini.style.width = pct + '%';
+                            if (currentIndex >= 0 && queue[currentIndex]) {
+                                queue[currentIndex].duration = dur;
+                            }
+                        }
+                    });
+                });
+            } catch (e) {
+                console.error("SC Widget Init Failed", e);
+            }
+        };
+        if (typeof SC === 'undefined') {
+            loadScript('https://w.soundcloud.com/player/api.js').then(initSCWidget).catch(e => console.error("SC API load failed", e));
+        } else {
+            initSCWidget();
         }
 
         el.nowId.value = item.id;
@@ -2761,24 +2752,25 @@ async function processPlayqFile(f) {
                     // Try to read metadata for audio files
                     const readTags = () => {
                         if (typeof jsmediatags !== 'undefined' && (lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a'))) {
-                        jsmediatags.read(restoredFile, {
-                            onSuccess: function (tag) {
-                                const tags = tag.tags;
-                                if (tags.title) restoredItem.title = tags.title;
-                                if (tags.artist) restoredItem.author = tags.artist;
-                                if (tags.picture) {
-                                    const { data, format } = tags.picture;
-                                    let base64String = "";
-                                    for (let j = 0; j < data.length; j++) {
-                                        base64String += String.fromCharCode(data[j]);
+                            jsmediatags.read(restoredFile, {
+                                onSuccess: function (tag) {
+                                    const tags = tag.tags;
+                                    if (tags.title) restoredItem.title = tags.title;
+                                    if (tags.artist) restoredItem.author = tags.artist;
+                                    if (tags.picture) {
+                                        const { data, format } = tags.picture;
+                                        let base64String = "";
+                                        for (let j = 0; j < data.length; j++) {
+                                            base64String += String.fromCharCode(data[j]);
+                                        }
+                                        restoredItem.thumbnail = `data:${format};base64,${window.btoa(base64String)}`;
                                     }
-                                    restoredItem.thumbnail = `data:${format};base64,${window.btoa(base64String)}`;
-                                }
-                                renderQueue();
-                                syncCurrentInfo();
-                            },
-                            onError: function (error) { console.warn("jsmediatags error", error); }
-                        });
+                                    renderQueue();
+                                    syncCurrentInfo();
+                                },
+                                onError: function (error) { console.warn("jsmediatags error", error); }
+                            });
+                        }
                     };
                     if ((lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a'))) {
                         if (typeof jsmediatags === 'undefined') {
@@ -3097,31 +3089,35 @@ function handleFiles(files) {
                 item.isImage = true;
                 item.duration = 5; // Default 5s for images
             } else if (f.type.startsWith('audio/') || isAudioFile(lowerName)) {
-                // Try to get metadata using jsmediatags
-                if (typeof jsmediatags === 'undefined') {
-                    try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js'); } catch(e){}
-                }
-                if (typeof jsmediatags !== 'undefined') {
-                    jsmediatags.read(f, {
-                        onSuccess: function (tag) {
-                            const tags = tag.tags;
-                            if (tags.title) item.title = tags.title;
-                            if (tags.artist) item.author = tags.artist;
-                            if (tags.picture) {
-                                const { data, format } = tags.picture;
-                                let base64String = "";
-                                for (let j = 0; j < data.length; j++) {
-                                    base64String += String.fromCharCode(data[j]);
+                // Try to get metadata using jsmediatags (lazy loaded)
+                const readTagsForFile = () => {
+                    if (typeof jsmediatags !== 'undefined') {
+                        jsmediatags.read(f, {
+                            onSuccess: function (tag) {
+                                const tags = tag.tags;
+                                if (tags.title) item.title = tags.title;
+                                if (tags.artist) item.author = tags.artist;
+                                if (tags.picture) {
+                                    const { data, format } = tags.picture;
+                                    let base64String = "";
+                                    for (let j = 0; j < data.length; j++) {
+                                        base64String += String.fromCharCode(data[j]);
+                                    }
+                                    item.thumbnail = `data:${format};base64,${window.btoa(base64String)}`;
                                 }
-                                item.thumbnail = `data:${format};base64,${window.btoa(base64String)}`;
+                                renderQueue();
+                                syncCurrentInfo();
+                            },
+                            onError: function (error) {
+                                console.warn("jsmediatags error", error);
                             }
-                            renderQueue();
-                            syncCurrentInfo();
-                        },
-                        onError: function (error) {
-                            console.warn("jsmediatags error", error);
-                        }
-                    });
+                        });
+                    }
+                };
+                if (typeof jsmediatags === 'undefined') {
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js').then(readTagsForFile).catch(() => {});
+                } else {
+                    readTagsForFile();
                 }
             }
             queue.push(item);
