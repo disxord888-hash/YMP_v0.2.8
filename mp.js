@@ -11,9 +11,9 @@ try {
 } catch (e) { }
 
 // Fetch version and update all brandings
-let currentVersion = 'v0.2.6';
+let currentVersion = 'v0.2.7';
 fetch('version.json').then(r => r.json()).then(data => {
-    const v = data.version || 'v0.2.6';
+    const v = data.version || 'v0.2.7';
     currentVersion = v;
 
     // Help Modal
@@ -112,6 +112,20 @@ const MEDIA_ACCEPT_STRING = '.json,.txt,.playq,' + MEDIA_FORMATS.all.join(',');
 
 
 // Helpers
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
 function safe(str) {
     if (!str) return "";
     return String(str).replace(/[&<>"']/g, m => ({
@@ -1272,76 +1286,58 @@ function playIndex(i) {
 
         // Create Vimeo Player with responsive sizing
         try {
+            const initVimeo = () => {
             vimeoPlayer = new Vimeo.Player(vimeoContainer, {
                 id: item.id,
                 autoplay: true,
                 width: vimeoContainer.offsetWidth || 800,
                 height: vimeoContainer.offsetHeight || 450
             });
-
-            // Reset lastKnownTime to current item's start to ensure cumulative time starts correctly
-            lastKnownTime = 0; // Always start from beginning
-
+            lastKnownTime = 0;
             vimeoPlayer.on('loaded', () => {
                 console.log('Vimeo Player Loaded');
-                // iframeにtabindex="-1"を設定してキーボードフォーカスを防止
                 const ifr = vimeoContainer.querySelector('iframe');
                 if (ifr) ifr.setAttribute('tabindex', '-1');
-
-                // Return focus to page so shortcuts work
                 setTimeout(() => {
                     window.focus();
                     if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
                         document.body.focus();
                     }
                 }, 100);
-
                 const vol = parseInt(el.volumeSlider.value) || 50;
                 vimeoPlayer.setVolume(vol / 100).catch(() => { });
-                vimeoPlayer.play().catch(e => {
-                    console.warn('Vimeo autoplay might be blocked:', e);
-                });
+                vimeoPlayer.play().catch(e => { console.warn('Vimeo autoplay might be blocked:', e); });
             });
-
-            vimeoPlayer.on('ended', () => {
-                skipNext();
-            });
-
+            vimeoPlayer.on('ended', () => { skipNext(); });
             vimeoPlayer.on('timeupdate', (data) => {
                 const cur = data.seconds;
                 const dur = data.duration;
-
                 if (isNaN(cur)) return;
-
                 el.currentTime.innerText = formatTime(cur);
                 if (dur > 0 && !isNaN(dur)) el.duration.innerText = formatTime(dur);
-
-                // Cumulative Time Update
                 const diff = cur - lastKnownTime;
-                // Use a slightly larger threshold for Vimeo due to different event frequency
-                if (diff > 0 && diff < 5) {
-                    cumulativeSeconds += diff;
-                }
+                if (diff > 0 && diff < 5) { cumulativeSeconds += diff; }
                 lastKnownTime = cur;
                 el.cumulativeTime.innerText = formatCumulative(cumulativeSeconds);
-
                 if (dur > 0 && !isNaN(dur)) {
                     const pct = (cur / dur) * 100;
                     el.progressBar.style.width = pct + '%';
                     const mini = document.getElementById(`mini-progress-${currentIndex}`);
                     if (mini) mini.style.width = pct + '%';
-
-                    if (currentIndex >= 0 && queue[currentIndex]) {
-                        // queue[currentIndex].lastTime = cur; // Disabled: Always start from beginning
-                        queue[currentIndex].duration = dur;
-                    }
+                    if (currentIndex >= 0 && queue[currentIndex]) { queue[currentIndex].duration = dur; }
                 }
             });
-
-            // Set volume
             const vol = parseInt(el.volumeSlider.value) || 50;
             vimeoPlayer.setVolume(vol / 100);
             vimeoPlayer.setLoop(isLoop).catch(() => { });
+        };
+        if (typeof Vimeo === 'undefined') {
+            loadScript('https://player.vimeo.com/api/player.js').then(initVimeo).catch(e => console.error("Vimeo JS load failed", e));
+        } else {
+            initVimeo();
+        }
+
+            // Vimeo setup moved inside initVimeo callback to support lazy loading
 
         } catch (e) {
             console.error("Vimeo Player Init Failed", e);
@@ -1878,6 +1874,7 @@ async function saveShareCardImage() {
         // Wait for images to load (just in case)
         await new Promise(r => setTimeout(r, 500));
 
+        if (typeof html2canvas === 'undefined') await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
         const canvas = await html2canvas(card, {
             useCORS: true,
             scale: 3, // High Res
@@ -2172,7 +2169,7 @@ document.getElementById('share-github-btn').onclick = async () => {
         document.getElementById('share-link-output').value = url;
     } catch (e) {
         console.error("Failed to fetch version.json", e);
-        const url = `https://disxord888-hash.github.io/YMP_v0.2.1/?=${currentShareData}`;
+        const url = `https://disxord888-hash.github.io/YMP_v0.2.7/?=${currentShareData}`;
         document.getElementById('share-link-output').value = url;
     }
 };
@@ -2606,8 +2603,12 @@ function processImportFile(f) {
 async function processPlayqFile(f) {
     if (!f) return;
     if (typeof JSZip === 'undefined') {
-        alert("JSZip library not loaded. PlayQ Package の読み込みにはJSZipが必要です。");
-        return;
+        try {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+        } catch(e) {
+            alert("JSZip library not loaded.");
+            return;
+        }
     }
 
     try {
@@ -2758,7 +2759,8 @@ async function processPlayqFile(f) {
                         if (!restoredItem.duration) restoredItem.duration = 5;
                     }
                     // Try to read metadata for audio files
-                    if (typeof jsmediatags !== 'undefined' && (lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a'))) {
+                    const readTags = () => {
+                        if (typeof jsmediatags !== 'undefined' && (lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a'))) {
                         jsmediatags.read(restoredFile, {
                             onSuccess: function (tag) {
                                 const tags = tag.tags;
@@ -2777,6 +2779,13 @@ async function processPlayqFile(f) {
                             },
                             onError: function (error) { console.warn("jsmediatags error", error); }
                         });
+                    };
+                    if ((lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a'))) {
+                        if (typeof jsmediatags === 'undefined') {
+                            loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js').then(readTags);
+                        } else {
+                            readTags();
+                        }
                     }
                     delete restoredItem.bundledFile; // Clean up
                     return restoredItem;
@@ -2840,9 +2849,13 @@ async function exportDataToFile(data, filename, extension) {
 
     if (extension === 'zip' || extension === 'playq') {
         if (typeof JSZip === 'undefined') {
-            alert("JSZip library not loaded. Please check your connection.");
+        try {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+        } catch(e) {
+            alert("JSZip library not loaded.");
             return;
         }
+    }
         const zip = new JSZip();
 
         // Remove File objects from metadata but keep filename info
@@ -3085,6 +3098,9 @@ function handleFiles(files) {
                 item.duration = 5; // Default 5s for images
             } else if (f.type.startsWith('audio/') || isAudioFile(lowerName)) {
                 // Try to get metadata using jsmediatags
+                if (typeof jsmediatags === 'undefined') {
+                    try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js'); } catch(e){}
+                }
                 if (typeof jsmediatags !== 'undefined') {
                     jsmediatags.read(f, {
                         onSuccess: function (tag) {
@@ -3708,7 +3724,7 @@ function mediaStop() {
     } else {
         if (player) { player.stopVideo(); }
     }
-    
+
     // 停止時はタイトルを元に戻す
     document.title = `YMP ${currentVersion} - Yukic Music Player`;
 }

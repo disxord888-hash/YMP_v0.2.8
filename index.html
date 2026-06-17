@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YMP v0.2.6 - Yukic Music Player</title>
+    <title>YMP v0.2.7 - Yukic Music Player</title>
     <meta name="description"
         content="YouTube, SoundCloud, Vimeo に対応した高機能なウェブベースのミュージックプレイヤー。詳細なシーク操作やキュー管理、アラーム機能を搭載しています。">
     <meta name="theme-color" content="#3b82f6">
@@ -73,7 +73,6 @@
         style="position: fixed; bottom: 15px; left: 15px; z-index: 5000; font-family: monospace; font-size: 36pt; color: #fff; background: transparent; pointer-events: none; transition: opacity 0.2s; opacity: 0; text-shadow: 2px 2px 4px #000;">
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <div id="help-modal" class="help-modal">
         <div class="help-content">
@@ -545,17 +544,14 @@
     <div class="footer-info">
         <div class="footer-brand">Yukic Music Player</div>
         <div class="footer-logo">YMP</div>
-        <div class="footer-version">v0.2.6</div>
+        <div class="footer-version">v0.2.7</div>
+        <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fdisxord888-hash.github.io%2FYMP&count_bg=%233b82f6&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=access&edge_flat=false" alt="Hits" style="margin-left: 10px; height: 20px;">
     </div>
 
     <!-- Modal for File Import -->
     <input type="file" id="file-input" style="display: none;" multiple
         accept=".json,.txt,.playq,audio/*,video/*,image/*,.flac,.ogg,.opus,.aac,.wma,.aiff,.aif,.mid,.midi,.amr,.ape,.wv,.caf,.pcm,.mkv,.webm,.avi,.mov,.wmv,.flv,.3gp,.3g2,.m4v,.ts,.mts,.m2ts,.ogv,.vob,.mpg,.mpeg,.bmp,.ico,.tiff,.tif,.avif,.heic,.heif,.jfif,.apng">
 
-    <script src="https://w.soundcloud.com/player/api.js"></script>
-    <script src="https://player.vimeo.com/api/player.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
