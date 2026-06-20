@@ -11,9 +11,9 @@ try {
 } catch (e) { }
 
 // Fetch version and update all brandings
-let currentVersion = 'v0.2.7';
+let currentVersion = 'v0.2.8';
 fetch('version.json').then(r => r.json()).then(data => {
-    const v = data.version || 'v0.2.7';
+    const v = data.version || 'v0.2.8';
     currentVersion = v;
 
     // Help Modal
@@ -2263,7 +2263,7 @@ document.getElementById('share-github-btn').onclick = async () => {
         document.getElementById('share-link-output').value = url;
     } catch (e) {
         console.error("Failed to fetch version.json", e);
-        const url = `https://disxord888-hash.github.io/YMP_v0.2.7/?=${currentShareData}`;
+        const url = `https://disxord888-hash.github.io/YMP_v0.2.8/?=${currentShareData}`;
         document.getElementById('share-link-output').value = url;
     }
 };
@@ -2699,7 +2699,7 @@ async function processPlayqFile(f) {
     if (typeof JSZip === 'undefined') {
         try {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-        } catch(e) {
+        } catch (e) {
             alert("JSZip library not loaded.");
             return;
         }
@@ -2944,13 +2944,13 @@ async function exportDataToFile(data, filename, extension) {
 
     if (extension === 'zip' || extension === 'playq') {
         if (typeof JSZip === 'undefined') {
-        try {
-            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-        } catch(e) {
-            alert("JSZip library not loaded.");
-            return;
+            try {
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+            } catch (e) {
+                alert("JSZip library not loaded.");
+                return;
+            }
         }
-    }
         const zip = new JSZip();
 
         // Remove File objects from metadata but keep filename info
@@ -3218,7 +3218,7 @@ function handleFiles(files) {
                     }
                 };
                 if (typeof jsmediatags === 'undefined') {
-                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js').then(readTagsForFile).catch(() => {});
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js').then(readTagsForFile).catch(() => { });
                 } else {
                     readTagsForFile();
                 }
