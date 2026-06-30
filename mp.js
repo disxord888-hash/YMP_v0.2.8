@@ -1212,9 +1212,23 @@ function renderQueue() {
 function sortQueueByTier() {
     const playingId = currentIndex >= 0 ? queue[currentIndex].id : null;
     queue.sort((a, b) => {
-        const rankA = getTierRank(a.tier);
-        const rankB = getTierRank(b.tier);
-        return rankB - rankA; // Higher tier first
+        const tA = String(a.tier || "");
+        const tB = String(b.tier || "");
+        
+        // Unicode Code Point Order (Descending)
+        const arrA = Array.from(tA);
+        const arrB = Array.from(tB);
+        const len = Math.max(arrA.length, arrB.length);
+        for (let i = 0; i < len; i++) {
+            if (i >= arrA.length) return 1; // shorter string -> smaller, so comes later (descending)
+            if (i >= arrB.length) return -1;
+            const cpA = arrA[i].codePointAt(0);
+            const cpB = arrB[i].codePointAt(0);
+            if (cpA !== cpB) {
+                return cpB - cpA; // Descending order
+            }
+        }
+        return 0;
     });
     currentIndex = playingId ? queue.findIndex(it => it.id === playingId) : -1;
     selectedListIndex = -1;
@@ -3419,6 +3433,10 @@ function handleShortcutKey(rawK, e = null) {
         // Clear logic for dot as it's now on K
     }
 
+    if (k === 'T') {
+        showTimestampList();
+        return;
+    }
     if (kl === 't') {
         if (e) e.preventDefault();
         tPrefixCount++;
@@ -3433,10 +3451,6 @@ function handleShortcutKey(rawK, e = null) {
             el.heldKeysIndicator.innerText = "T".repeat(tPrefixCount);
             el.heldKeysIndicator.style.opacity = "1";
         }
-        return;
-    }
-    if (k === 'T') {
-        showTimestampList();
         return;
     }
 
@@ -3546,7 +3560,7 @@ function showTimestampList() {
     if (currentIndex < 0 || !queue[currentIndex]) return;
     const memo = queue[currentIndex].memo || "";
     // Match T1:[00:00.00]|comment:[...] or TT1...
-    const regex = /(T+)([1-90\-^\\qweruio p@]):\[([^\]]+)\](?:\|comment:\[([^\]]*)\])?/g;
+    const regex = /(T+)([1-90\-^\\¥|‾qweryuiop@]):\[([^\]]+)\](?:\|comment:\[([^\]]*)\])?/g;
     let matches = [];
     let m;
     while ((m = regex.exec(memo)) !== null) {
