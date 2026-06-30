@@ -11,9 +11,9 @@ try {
 } catch (e) { }
 
 // Fetch version and update all brandings
-let currentVersion = 'v0.2.8';
+let currentVersion = 'v0.2.9';
 fetch('version.json').then(r => r.json()).then(data => {
-    const v = data.version || 'v0.2.8';
+    const v = data.version || 'v0.2.9';
     currentVersion = v;
 
     // Help Modal
@@ -1214,7 +1214,7 @@ function sortQueueByTier() {
     queue.sort((a, b) => {
         const tA = String(a.tier || "");
         const tB = String(b.tier || "");
-        
+
         // Unicode Code Point Order (Descending)
         const arrA = Array.from(tA);
         const arrB = Array.from(tB);
@@ -2277,7 +2277,7 @@ document.getElementById('share-github-btn').onclick = async () => {
         document.getElementById('share-link-output').value = url;
     } catch (e) {
         console.error("Failed to fetch version.json", e);
-        const url = `https://disxord888-hash.github.io/YMP_v0.2.8/?=${currentShareData}`;
+        const url = `https://disxord888-hash.github.io/YMP_v0.2.9/?=${currentShareData}`;
         document.getElementById('share-link-output').value = url;
     }
 };
